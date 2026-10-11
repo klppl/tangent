@@ -23,9 +23,19 @@ Tangent is a menu bar app. **Double-tap ⌘** anywhere and a virtual keyboard sh
 - **Fast:** type, press ↩, and the character is copied. esc closes.
 - **Light:** a native Swift app with no Dock icon and no permissions needed.
 
-## Install
+## Download
 
-Requires macOS 13+ and the Xcode Command Line Tools.
+Grab **Tangent.zip** from the [latest release](https://github.com/klppl/tangent/releases/latest), unzip, and move `Tangent.app` to Applications. Requires macOS 13+ and runs on Apple Silicon and Intel Macs.
+
+The app isn't notarized, so the first time you open it macOS blocks it. Go to **System Settings → Privacy & Security** and click **Open Anyway**, or run:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Tangent.app
+```
+
+## Build from source
+
+Requires the Xcode Command Line Tools.
 
 ```bash
 ./build.sh install

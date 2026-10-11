@@ -4,13 +4,17 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-swift build -c release
-BIN="$(swift build -c release --show-bin-path)/Tangent"
+# Universal binary: build each architecture, then merge with lipo.
+BINS=()
+for ARCH in arm64 x86_64; do
+    swift build -c release --triple "$ARCH-apple-macosx13.0"
+    BINS+=("$(swift build -c release --triple "$ARCH-apple-macosx13.0" --show-bin-path)/Tangent")
+done
 
 APP="build/Tangent.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
-cp "$BIN" "$APP/Contents/MacOS/Tangent"
+lipo -create "${BINS[@]}" -output "$APP/Contents/MacOS/Tangent"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 codesign --force --sign - "$APP"
 echo "Built $APP"

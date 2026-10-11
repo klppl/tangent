@@ -1,0 +1,34 @@
+# Tangent
+
+**Never hunt for `@`, `{`, `\` or `~` on a Mac keyboard again.**
+
+Tangent is a menu bar app. Press **⌃⌥⌘K** anywhere and a virtual keyboard shows exactly which keys to press for any character or shortcut.
+
+![Tangent shows how to type a tilde](docs/deadkey.png)
+
+<table>
+  <tr>
+    <td><img src="docs/search.png" alt="Search by name"></td>
+    <td><img src="docs/option-layer.png" alt="Hold option to explore"></td>
+    <td><img src="docs/shortcuts.png" alt="Mac shortcuts"></td>
+  </tr>
+  <tr>
+    <td align="center">Search by name: <i>måsvinge</i> → <code>{</code></td>
+    <td align="center">Hold ⌥ or ⇧ to see every key</td>
+    <td align="center">Common Mac shortcuts</td>
+  </tr>
+</table>
+
+- **Always correct:** reads your active keyboard layout, including dead keys like `⌥¨` then space → `~`.
+- **Fast:** type, press ↩, and the character is copied. esc closes.
+- **Light:** a native Swift app with no Dock icon and no permissions needed.
+
+## Install
+
+Requires macOS 13+ and the Xcode Command Line Tools.
+
+```bash
+./build.sh install
+```
+
+The script builds `Tangent.app`, copies it to `/Applications` and starts it. Change the hotkey from the menu bar icon.

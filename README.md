@@ -42,3 +42,7 @@ Requires the Xcode Command Line Tools.
 ```
 
 The script builds `Tangent.app`, copies it to `/Applications` and starts it. From the menu bar icon you can switch to double-tap ⌥ or ⌃, or set a custom combination.
+
+## License
+
+[The Lagom License](LICENSE): not too much, not too little.

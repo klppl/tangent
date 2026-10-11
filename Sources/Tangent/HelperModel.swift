@@ -18,6 +18,7 @@ struct Entry: Identifiable, Equatable {
 
 final class HelperModel: ObservableObject {
     enum Tab: String, CaseIterable { case popular = "Populära", characters = "Alla tecken", shortcuts = "Kortkommandon" }
+    enum Mode { case keyboard, cheatSheets }
 
     static let popular = ["@", "{", "}", "[", "]", "\\", "|", "~", "$", "€", "^", "`", "°"]
 
@@ -29,6 +30,9 @@ final class HelperModel: ObservableObject {
     @Published var heldMods: Mods = []
     @Published var toast: String?
     @Published var focusRequest = 0
+    @Published var mode: Mode = .keyboard
+    @Published private(set) var sheets: [CheatSheet] = []
+    @Published var sheetID: String?
 
     private(set) var symbolEntries: [Entry] = []
     private(set) var shortcutEntries: [Entry] = []
@@ -38,6 +42,7 @@ final class HelperModel: ObservableObject {
 
     /// Re-reads the keyboard layout (the user may have switched input source).
     func reload() {
+        sheets = CheatSheets.load()
         layout = KeyboardLayout()
         rebuild()
         if let id = selected?.id { selected = (symbolEntries + shortcutEntries).first { $0.id == id } }
@@ -100,8 +105,46 @@ final class HelperModel: ObservableObject {
         manualLayer = entry.flatMap { $0.isShortcut ? nil : $0.steps.first?.mods.intersection(.typing) } ?? []
     }
 
-    /// ↑/↓ through the grid.
+    // MARK: - Cheat sheets
+
+    func toggleMode() {
+        mode = mode == .keyboard ? .cheatSheets : .keyboard
+    }
+
+    /// The sheet shown when not searching.
+    var currentSheet: CheatSheet? { sheets.first { $0.id == sheetID } ?? sheets.first }
+
+    /// The current sheet, or search hits across all sheets.
+    var sheetResults: [CheatSheet] {
+        isSearching ? CheatSheets.search(sheets, query) : currentSheet.map { [$0] } ?? []
+    }
+
+    func showSheet(_ sheet: CheatSheet) {
+        sheetID = sheet.id
+        query = ""
+    }
+
+    func createExampleSheet() {
+        guard let url = try? CheatSheets.createExample() else { return }
+        sheets = CheatSheets.load()
+        sheetID = url.path
+    }
+
+    func copy(_ row: CheatSheet.Row) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(row.keys, forType: .string)
+        toast = "Kopierat"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in self?.toast = nil }
+    }
+
+    /// ↑/↓ through the grid, or through the sheets in cheat sheet mode.
     func move(_ delta: Int) {
+        if mode == .cheatSheets {
+            guard !isSearching, !sheets.isEmpty else { return }
+            let index = currentSheet.flatMap { s in sheets.firstIndex(of: s) } ?? 0
+            sheetID = sheets[min(max(index + delta, 0), sheets.count - 1)].id
+            return
+        }
         let list = results
         guard !list.isEmpty else { return }
         let index = selected.flatMap { s in list.firstIndex(of: s) }
@@ -139,7 +182,7 @@ final class HelperModel: ObservableObject {
 
     /// ↩ in the search field: copy the selected (or first) character and close.
     func submit() {
-        guard let entry = selected ?? results.first, entry.glyph != nil else { return }
+        guard mode == .keyboard, let entry = selected ?? results.first, entry.glyph != nil else { return }
         copy(entry)
         onClose?()
     }

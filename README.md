@@ -23,6 +23,20 @@ Tangent is a menu bar app. **Double-tap ⌘** anywhere and a virtual keyboard sh
 - **Fast:** type, press ↩, and the character is copied. esc closes.
 - **Light:** a native Swift app with no Dock icon and no permissions needed.
 
+## Cheat sheets
+
+Press **⇥** in the helper to switch to cheat sheet mode. Your own sheets live in `~/.config/tangent` as `.md` or `.txt` files, and the search field searches all of them:
+
+```markdown
+# Vim
+
+## Rörelse
+gg / G       Början / slutet av filen
+w / b        Nästa / föregående ord
+```
+
+`#` is the sheet's title (the file name is used if it's missing), `##` starts a section, and every other line is the keys, two or more spaces or a tab, then the description. Double-click a row to copy its keys.
+
 ## Download
 
 Grab **Tangent.zip** from the [latest release](https://github.com/klppl/tangent/releases/latest), unzip, and move `Tangent.app` to Applications. Requires macOS 13+ and runs on Apple Silicon and Intel Macs.

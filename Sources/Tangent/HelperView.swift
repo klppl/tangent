@@ -10,10 +10,17 @@ struct HelperView: View {
         VStack(spacing: 0) {
             search
             Divider().opacity(0.6)
+            // Cheat sheets cover the keyboard view, which stays in place to keep the panel's size.
             VStack(spacing: 24) {
                 KeyboardView(model: model)
                 resultLine
                 browser
+            }
+            .opacity(cheatSheets ? 0 : 1)
+            .allowsHitTesting(!cheatSheets)
+            .accessibilityHidden(cheatSheets)
+            .overlay {
+                if cheatSheets { CheatSheetView(model: model) }
             }
             .padding(.horizontal, 28)
             .padding(.top, 28)
@@ -24,9 +31,12 @@ struct HelperView: View {
         .background(Color(nsColor: .windowBackgroundColor).opacity(0.6))
         .onReceive(model.$focusRequest) { _ in searchFocused = true }
         .onChange(of: model.query) { _ in
+            guard !cheatSheets else { return }
             model.select(model.isSearching ? model.results.first : nil)
         }
     }
+
+    private var cheatSheets: Bool { model.mode == .cheatSheets }
 
     // MARK: Search
 
@@ -35,7 +45,7 @@ struct HelperView: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(.secondary)
-            TextField("Sök tecken eller kortkommando", text: $model.query)
+            TextField(cheatSheets ? "Sök i fusklappar" : "Sök tecken eller kortkommando", text: $model.query)
                 .textFieldStyle(.plain)
                 .font(.system(size: 20, weight: .regular))
                 .focused($searchFocused)
@@ -47,6 +57,14 @@ struct HelperView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.tertiary)
             }
+            Picker("", selection: $model.mode) {
+                Image(systemName: "keyboard").tag(HelperModel.Mode.keyboard)
+                Image(systemName: "list.bullet.rectangle").tag(HelperModel.Mode.cheatSheets)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .help("Tangentbord eller fusklappar (⇥)")
         }
         .padding(.horizontal, 22)
         .frame(height: 58)

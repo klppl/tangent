@@ -111,6 +111,9 @@ final class HelperPanelController: NSObject, NSWindowDelegate {
             case 0x35: // esc: clear search, then close
                 if !self.model.escape() { self.hide(reactivatePrevious: true) }
                 return nil
+            case 0x30 where Mods(event.modifierFlags).subtracting(.fn).isEmpty: // ⇥: switch mode
+                self.model.toggleMode()
+                return nil
             case 0x7E: self.model.move(-1); return nil // ↑
             case 0x7D: self.model.move(1); return nil  // ↓
             default: return event

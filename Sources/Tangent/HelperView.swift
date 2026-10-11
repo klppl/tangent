@@ -85,6 +85,8 @@ struct HelperView: View {
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     recipe(entry)
+                        .onTapGesture { if model.returnToSheets { model.playDemo(entry.steps) } }
+                        .help(model.returnToSheets ? "Klicka för att spela upp igen" : "")
                     Text(model.toast ?? subtitle(entry))
                         .font(.system(size: 12))
                         .foregroundStyle(model.toast != nil ? AnyShapeStyle(Color.green) : AnyShapeStyle(.secondary))
@@ -102,6 +104,7 @@ struct HelperView: View {
     }
 
     private func subtitle(_ entry: Entry) -> String {
+        if model.returnToSheets { return entry.title + " · esc tillbaka till fusklappar" }
         if entry.isShortcut { return entry.title }
         return entry.aliases.prefix(3).joined(separator: " · ")
     }

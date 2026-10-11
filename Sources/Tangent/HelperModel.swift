@@ -30,7 +30,21 @@ final class HelperModel: ObservableObject {
     @Published var heldMods: Mods = []
     @Published var toast: String?
     @Published var focusRequest = 0
-    @Published var mode: Mode = .keyboard
+    @Published var mode: Mode = .keyboard {
+        didSet {
+            stopDemo()
+            if mode == .cheatSheets, returnToSheets {
+                returnToSheets = false
+                select(nil)
+            }
+        }
+    }
+    /// The keyboard is showing a shortcut picked from a cheat sheet; esc goes back.
+    @Published private(set) var returnToSheets = false
+    /// Keys held down in the shortcut animation.
+    @Published private(set) var demoMods: Mods = []
+    @Published private(set) var demoKey: UInt16?
+    private var demoRun = 0
     @Published private(set) var sheets: [CheatSheet] = []
     @Published var sheetID: String?
     /// The app that was in front when the helper opened, whose menu shortcuts form a sheet of their own.
@@ -47,6 +61,7 @@ final class HelperModel: ObservableObject {
 
     /// Re-reads the keyboard layout (the user may have switched input source), cheat sheets and the front app's menus.
     func reload(frontApp: NSRunningApplication? = nil) {
+        if returnToSheets { mode = .cheatSheets }
         sheets = CheatSheets.load()
         readMenus(of: frontApp)
         layout = KeyboardLayout()
@@ -167,6 +182,99 @@ final class HelperModel: ObservableObject {
         sheetID = url.path
     }
 
+    /// Shows a cheat sheet row on the keyboard and animates pressing it. Returns false if the keys can't be typed.
+    @discardableResult
+    func showOnKeyboard(_ row: CheatSheet.Row) -> Bool {
+        guard let steps = strokes(for: row.keys) else { return false }
+        let entry = Entry(id: "r:" + row.keys, glyph: nil, title: row.text, aliases: [], category: "", steps: steps)
+        mode = .keyboard
+        returnToSheets = true
+        select(entry)
+        playDemo(steps)
+        return true
+    }
+
+    /// Presses each step's modifiers one at a time, then its key, and lets go. Plays twice.
+    func playDemo(_ steps: [Stroke]) {
+        stopDemo()
+        let run = demoRun
+        var time = 0.35
+        var actions: [(TimeInterval, (HelperModel) -> Void)] = []
+        for _ in 0..<2 {
+            for step in steps {
+                var held: Mods = []
+                for mod in step.mods.parts {
+                    held.insert(mod)
+                    let mods = held
+                    actions.append((time, { $0.demoMods = mods }))
+                    time += 0.2
+                }
+                actions.append((time, { $0.demoKey = step.keyCode }))
+                time += 0.45
+                actions.append((time, { $0.demoKey = nil; $0.demoMods = [] }))
+                time += 0.3
+            }
+            time += 0.5
+        }
+        for (delay, action) in actions {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                guard let self, self.demoRun == run else { return }
+                action(self)
+            }
+        }
+    }
+
+    func stopDemo() {
+        demoRun += 1
+        demoMods = []
+        demoKey = nil
+    }
+
+    /// Keys that cheat sheets name instead of typing, with any modifier a MacBook needs for them.
+    private static let namedKeys: [String: (UInt16, Mods)] = {
+        var keys: [String: (UInt16, Mods)] = [:]
+        for (code, name) in KeyboardLayout.specialNames { keys[name.lowercased()] = (code, []) }
+        let extra: [String: (UInt16, Mods)] = [
+            "␣": (0x31, []), "space": (0x31, []), "tab": (0x30, []), "return": (0x24, []), "enter": (0x24, []),
+            "delete": (0x33, []), "backspace": (0x33, []), "escape": (0x35, []),
+            "left": (0x7B, []), "right": (0x7C, []), "down": (0x7D, []), "up": (0x7E, []),
+            "⌦": (0x33, .fn), "⇞": (0x7E, .fn), "⇟": (0x7D, .fn), "↖": (0x7B, .fn), "↘": (0x7C, .fn),
+        ]
+        keys.merge(extra) { _, new in new }
+        return keys
+    }()
+
+    /// Turns cheat sheet keys like "⇧⌘N", "⌃r", "esc", "gg" or ":wq" into strokes on the current layout.
+    func strokes(for keys: String) -> [Stroke]? {
+        let symbols: [Character: Mods] = ["⌃": .control, "⌥": .option, "⇧": .shift, "⌘": .command]
+        var mods: Mods = []
+        var rest = Substring(keys.trimmingCharacters(in: .whitespaces))
+        while let first = rest.first, let mod = symbols[first] {
+            mods.insert(mod)
+            rest = rest.dropFirst()
+        }
+        guard !rest.isEmpty else { return nil }
+        if let (code, extra) = Self.namedKeys[rest.lowercased()] {
+            return [Stroke(keyCode: code, mods: mods.union(extra))]
+        }
+        // With modifiers, a single key (menus show letters uppercase). Without, a short sequence like "gg" or ":wq".
+        let chars = rest.map(String.init)
+        guard mods.isEmpty ? chars.count <= 6 : chars.count == 1, !chars.contains(" ") else { return nil }
+        var result: [Stroke] = []
+        for char in chars {
+            let isCapital = mods.isEmpty && char != char.lowercased()
+            if let code = layout.keyCode(forBase: char) {
+                result.append(Stroke(keyCode: code, mods: isCapital ? [.shift] : []))
+            } else if let recipe = layout.recipes[char], recipe.count == 1 {
+                result.append(recipe[0])
+            } else {
+                return nil
+            }
+        }
+        result[0] = Stroke(keyCode: result[0].keyCode, mods: result[0].mods.union(mods))
+        return result
+    }
+
     func copy(_ row: CheatSheet.Row) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(row.keys, forType: .string)
@@ -227,6 +335,10 @@ final class HelperModel: ObservableObject {
 
     /// esc: clear the search first, close on the second press. Returns true if handled.
     func escape() -> Bool {
+        if returnToSheets {
+            mode = .cheatSheets
+            return true
+        }
         guard query.isEmpty else { query = ""; return true }
         return false
     }

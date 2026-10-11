@@ -117,7 +117,7 @@ struct KeyboardView: View {
             let base = model.layout.output(code, [])
             let step = stepIndex(code: code)
             KeyCap(label: out?.text ?? "", sub: step != nil && !model.layer.isEmpty ? base?.text : nil,
-                   width: w, height: unit, step: step, dimmed: focusing && step == nil,
+                   width: w, height: unit, step: step, down: model.demoKey == code, dimmed: focusing && step == nil,
                    dead: out?.dead ?? false, fontSize: 17)
                 .onTapGesture { model.tapKey(code) }
 
@@ -125,16 +125,19 @@ struct KeyboardView: View {
             let step = stepIndex(code: def.code, mod: mod, primary: primary)
             let pressed = model.heldMods.contains(mod) || (model.heldMods.isEmpty && model.manualLayer.contains(mod) && !focusing)
             KeyCap(label: mod.symbol, width: w, height: unit, step: step, pressed: pressed,
+                   down: primary && model.demoMods.contains(mod),
                    dimmed: focusing && step == nil, quiet: true, fontSize: mod == .fn ? 11 : 14)
                 .onTapGesture { if Mods.typing.contains(mod) { model.toggleLayer(mod) } }
 
         case .label(let label):
             let step = stepIndex(code: def.code)
-            KeyCap(label: label, width: w, height: unit, step: step, dimmed: focusing && step == nil, quiet: true, fontSize: 14)
+            KeyCap(label: label, width: w, height: unit, step: step, down: def.code != nil && model.demoKey == def.code,
+                   dimmed: focusing && step == nil, quiet: true, fontSize: 14)
 
         case .isoReturn:
             let step = stepIndex(code: def.code)
-            KeyCap(label: "↩", width: w, height: unit, step: step, dimmed: focusing && step == nil, quiet: true,
+            KeyCap(label: "↩", width: w, height: unit, step: step, down: model.demoKey == def.code,
+                   dimmed: focusing && step == nil, quiet: true,
                    fontSize: 14, isoReturn: (bottomWidth: width(1.25), totalHeight: unit * 2 + gap))
 
         case .returnTail:
@@ -156,7 +159,8 @@ struct KeyboardView: View {
 
     private func arrow(_ code: UInt16, _ label: String, _ h: CGFloat) -> some View {
         let step = stepIndex(code: code)
-        return KeyCap(label: label, width: width(1), height: h, step: step, dimmed: focusing && step == nil,
+        return KeyCap(label: label, width: width(1), height: h, step: step, down: model.demoKey == code,
+                      dimmed: focusing && step == nil,
                       quiet: true, fontSize: 10)
     }
 }
@@ -184,6 +188,8 @@ struct KeyCap: View {
     let height: CGFloat
     var step: Int? = nil
     var pressed = false
+    /// Pushed down, as in the shortcut animation.
+    var down = false
     var dimmed = false
     var dead = false
     /// Modifier/system keys: lighter label.
@@ -237,11 +243,14 @@ struct KeyCap: View {
             .frame(width: width, height: height)
         }
         .frame(width: width, height: height, alignment: .top)
+        .scaleEffect(down ? 0.86 : 1)
+        .brightness(down ? 0.12 : 0)
         .opacity(dimmed ? 0.3 : 1)
         .contentShape(Rectangle())
         .onHover { hovered = $0 }
         .animation(.spring(response: 0.28, dampingFraction: 0.85), value: step)
         .animation(.easeOut(duration: 0.2), value: dimmed)
         .animation(.easeOut(duration: 0.1), value: hovered)
+        .animation(.spring(response: 0.18, dampingFraction: 0.6), value: down)
     }
 }

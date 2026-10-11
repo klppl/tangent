@@ -20,10 +20,10 @@ final class HelperPanelController: NSObject, NSWindowDelegate {
     func show() {
         let panel = self.panel ?? makePanel()
         self.panel = panel
-        model.reload()
 
         let front = NSWorkspace.shared.frontmostApplication
         if front != NSRunningApplication.current { previousApp = front }
+        model.reload(frontApp: previousApp)
 
         // Center on the screen that has the mouse.
         let mouse = NSEvent.mouseLocation

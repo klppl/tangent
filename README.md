@@ -2,7 +2,7 @@
 
 **Never hunt for `@`, `{`, `\` or `~` on a Mac keyboard again.**
 
-Tangent is a menu bar app. Press **⌃⌥⌘K** anywhere and a virtual keyboard shows exactly which keys to press for any character or shortcut.
+Tangent is a menu bar app. **Double-tap ⌘** anywhere and a virtual keyboard shows exactly which keys to press for any character or shortcut. Double-tap and hold to peek: it disappears when you let go.
 
 ![Tangent shows how to type a tilde](docs/deadkey.png)
 
@@ -31,4 +31,4 @@ Requires macOS 13+ and the Xcode Command Line Tools.
 ./build.sh install
 ```
 
-The script builds `Tangent.app`, copies it to `/Applications` and starts it. Change the hotkey from the menu bar icon.
+The script builds `Tangent.app`, copies it to `/Applications` and starts it. From the menu bar icon you can switch to double-tap ⌥ or ⌃, or set a custom combination.

@@ -20,7 +20,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.settingsWindow?.close()
             self?.helper.show()
         }
-        settings.applyHotKey()
+        settings.tapDetector.onDoubleTap = { [weak self] in self?.helper.toggle() }
+        settings.tapDetector.onHoldReleased = { [weak self] in self?.helper.hide(reactivatePrevious: true) }
+        settings.applyTrigger()
 
         if !UserDefaults.standard.bool(forKey: "hasLaunched") {
             UserDefaults.standard.set(true, forKey: "hasLaunched")
@@ -35,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let show = NSMenuItem(title: "Visa teckenhjälp", action: #selector(showHelper), keyEquivalent: "")
         show.target = self
         let hotKey = settings.hotKey
-        if let char = layout.output(hotKey.keyCode, [])?.text, char.count == 1, !hotKey.mods.contains(.fn) {
+        if settings.trigger == .combo, let char = layout.output(hotKey.keyCode, [])?.text, char.count == 1, !hotKey.mods.contains(.fn) {
             show.keyEquivalent = char.lowercased()
             var mask: NSEvent.ModifierFlags = []
             if hotKey.mods.contains(.command) { mask.insert(.command) }
@@ -47,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(show)
 
         menu.addItem(.separator())
-        let change = NSMenuItem(title: "Ändra kortkommando (\(hotKey.display(layout)))…", action: #selector(openSettings), keyEquivalent: ",")
+        let change = NSMenuItem(title: "Ändra kortkommando (\(settings.triggerDisplay))…", action: #selector(openSettings), keyEquivalent: ",")
         change.target = self
         menu.addItem(change)
 

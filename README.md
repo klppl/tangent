@@ -19,7 +19,7 @@ Tangent is a menu bar app. **Double-tap ⌘** anywhere and a virtual keyboard sh
   </tr>
 </table>
 
-- **Always correct:** reads your active keyboard layout, including dead keys like `⌥¨` then space → `~`.
+- **Always correct:** reads your active keyboard layout, including dead keys like `⌥¨` then space → `~`. You can also pick any other layout in settings, and switch between ISO and ANSI keyboards.
 - **Fast:** type, press ↩, and the character is copied. esc closes.
 - **Light:** a native Swift app with no Dock icon. No permissions needed, unless you want the current app's shortcuts (see below).
 

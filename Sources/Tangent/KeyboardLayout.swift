@@ -112,6 +112,54 @@ enum PhysicalLayout: String, CaseIterable {
     }
 }
 
+/// Which keyboard layout (input source) to show: the active one, or one the user picked in settings.
+enum CharacterLayout {
+    struct Choice: Hashable, Identifiable {
+        let id: String
+        let name: String
+    }
+
+    private static let defaultsKey = "characterLayout"
+
+    /// Input source ID, e.g. "com.apple.keylayout.German"; nil follows the active layout.
+    static var preference: String? {
+        get { UserDefaults.standard.string(forKey: defaultsKey) }
+        set { UserDefaults.standard.set(newValue, forKey: defaultsKey) }
+    }
+
+    /// Layouts the user has added in System Settings, or every layout installed on the Mac.
+    static func choices(all: Bool) -> [Choice] {
+        sources(all: all)
+            .compactMap { source in
+                guard TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) != nil,
+                      let id = string(source, kTISPropertyInputSourceID),
+                      let name = string(source, kTISPropertyLocalizedName) else { return nil }
+                return Choice(id: id, name: name)
+            }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    /// The layout to read: the chosen one if it still exists, otherwise the active one.
+    static func source(followSettings: Bool) -> TISInputSource? {
+        if followSettings, let id = preference,
+           let chosen = sources(all: true).first(where: { string($0, kTISPropertyInputSourceID) == id }) {
+            return chosen
+        }
+        let current = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue()
+        if current.flatMap({ TISGetInputSourceProperty($0, kTISPropertyUnicodeKeyLayoutData) }) != nil { return current }
+        return TISCopyCurrentASCIICapableKeyboardLayoutInputSource()?.takeRetainedValue()
+    }
+
+    static func string(_ source: TISInputSource, _ key: CFString) -> String? {
+        TISGetInputSourceProperty(source, key).map { Unmanaged<CFString>.fromOpaque($0).takeUnretainedValue() as String }
+    }
+
+    private static func sources(all: Bool) -> [TISInputSource] {
+        let filter = [kTISPropertyInputSourceType as String: kTISTypeKeyboardLayout as String] as CFDictionary
+        return TISCreateInputSourceList(filter, all)?.takeRetainedValue() as? [TISInputSource] ?? []
+    }
+}
+
 /// Reads the user's current keyboard layout and works out which keys produce which characters.
 final class KeyboardLayout {
     static let layers: [Mods] = [[], [.shift], [.option], [.shift, .option]]
@@ -127,24 +175,24 @@ final class KeyboardLayout {
     private(set) var recipes: [String: [Stroke]] = [:]
     private var baseKeys: [String: UInt16] = [:]
 
-    init() {
+    /// True when showing a layout picked in settings rather than the active one.
+    let isOverride: Bool
+
+    /// `followSettings: false` reads the active layout, for matching what the user's keys actually type.
+    init(followSettings: Bool = true) {
         physical = .current
         kbdType = physical.kbdType
         typingKeys = MacBookKeyboard.typingKeys(physical)
-        var source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue()
-        if source.flatMap({ TISGetInputSourceProperty($0, kTISPropertyUnicodeKeyLayoutData) }) == nil {
-            source = TISCopyCurrentASCIICapableKeyboardLayoutInputSource()?.takeRetainedValue()
-        }
+        let source = CharacterLayout.source(followSettings: followSettings)
         if let source, let ptr = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) {
             data = Unmanaged<CFData>.fromOpaque(ptr).takeUnretainedValue() as Data
         } else {
             data = nil
         }
-        if let source, let ptr = TISGetInputSourceProperty(source, kTISPropertyLocalizedName) {
-            name = Unmanaged<CFString>.fromOpaque(ptr).takeUnretainedValue() as String
-        } else {
-            name = "Okänd"
-        }
+        name = source.flatMap { CharacterLayout.string($0, kTISPropertyLocalizedName) } ?? "Okänd"
+        let id = source.flatMap { CharacterLayout.string($0, kTISPropertyInputSourceID) }
+        let current = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue()
+        isOverride = id != nil && id != current.flatMap { CharacterLayout.string($0, kTISPropertyInputSourceID) }
         build()
     }
 

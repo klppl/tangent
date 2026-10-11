@@ -37,12 +37,22 @@ final class SettingsModel: ObservableObject {
     @Published var physicalLayout = PhysicalLayout.preference {
         didSet { PhysicalLayout.preference = physicalLayout }
     }
+    @Published var characterLayout = CharacterLayout.preference {
+        didSet { CharacterLayout.preference = characterLayout }
+    }
+    /// Layouts added in System Settings first, then every other installed one.
+    let enabledLayouts = CharacterLayout.choices(all: false)
+    lazy var otherLayouts: [CharacterLayout.Choice] = {
+        let enabled = Set(enabledLayouts.map(\.id))
+        return CharacterLayout.choices(all: true).filter { !enabled.contains($0.id) }
+    }()
+    var activeLayoutName: String { KeyboardLayout(followSettings: false).name }
 
     let tapDetector = ModifierTapDetector()
     var onShowHelper: (() -> Void)?
     private var monitor: Any?
 
-    var hotKeyDisplay: String { hotKey.display(KeyboardLayout()) }
+    var hotKeyDisplay: String { hotKey.display(KeyboardLayout(followSettings: false)) }
 
     /// Short description for the menu, e.g. "⌘ ⌘" or "⌃⌥⌘K".
     var triggerDisplay: String { trigger == .combo ? hotKeyDisplay : trigger.label }
@@ -163,6 +173,30 @@ struct SettingsView: View {
                 Text(error).font(.caption).foregroundColor(.red).fixedSize(horizontal: false, vertical: true)
             }
             Divider()
+            HStack {
+                Text("Teckenlayout")
+                Spacer()
+                Picker("", selection: $model.characterLayout) {
+                    Text("Aktuell (\(model.activeLayoutName))").tag(String?.none)
+                    Divider()
+                    ForEach(model.enabledLayouts) { Text($0.name).tag(String?.some($0.id)) }
+                    // A layout picked from "Fler" needs an item here to show as selected.
+                    if let id = model.characterLayout, let other = model.otherLayouts.first(where: { $0.id == id }) {
+                        Divider()
+                        Text(other.name).tag(String?.some(other.id))
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
+                Menu("Fler") {
+                    ForEach(model.otherLayouts) { layout in
+                        Button(layout.name) { model.characterLayout = layout.id }
+                    }
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("Alla layouter som finns på datorn")
+            }
             HStack {
                 Text("Tangentbord")
                 Spacer()

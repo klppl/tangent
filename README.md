@@ -25,6 +25,8 @@ Tangent is a menu bar app. **Double-tap ⌘** anywhere and a virtual keyboard sh
 
 ## Cheat sheets
 
+![Cheat sheet mode](docs/cheat-sheets.png)
+
 Press **⇥** in the helper to switch to cheat sheet mode. The first sheet lists every menu shortcut in the app you were using. Reading another app's menus needs Accessibility permission, which Tangent asks for the first time you open that sheet.
 
 Your own sheets live in `~/.config/tangent` as `.md` or `.txt` files, and the search field searches all of them:

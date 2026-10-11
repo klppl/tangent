@@ -78,19 +78,49 @@ struct KeyOutput {
     let dead: Bool
 }
 
+/// Physical key arrangement of the keyboard.
+enum PhysicalLayout: String, CaseIterable {
+    /// Tall return key and an extra key between left shift and Z (most of Europe).
+    case iso
+    /// Wide return key with \ above it and a long left shift (US and others).
+    case ansi
+
+    var label: String { self == .iso ? "ISO" : "ANSI" }
+
+    private static let defaultsKey = "physicalLayout"
+
+    /// The user's choice; nil means detect it.
+    static var preference: PhysicalLayout? {
+        get { UserDefaults.standard.string(forKey: defaultsKey).flatMap(PhysicalLayout.init) }
+        set { UserDefaults.standard.set(newValue?.rawValue, forKey: defaultsKey) }
+    }
+
+    /// The keyboard last typed on. JIS is shown as ISO, the closer shape.
+    static var detected: PhysicalLayout {
+        KBGetLayoutType(Int16(LMGetKbdType())) == UInt32(kKeyboardANSI) ? .ansi : .iso
+    }
+
+    static var current: PhysicalLayout { preference ?? detected }
+
+    /// Keyboard type for UCKeyTranslate. When the user overrides detection, translate as that
+    /// kind of keyboard so keys that only exist on it get the right characters.
+    var kbdType: UInt32 {
+        let actual = UInt32(LMGetKbdType())
+        guard self != Self.detected else { return actual }
+        let wanted = UInt32(self == .ansi ? kKeyboardANSI : kKeyboardISO)
+        return (0...255).first { KBGetLayoutType(Int16($0)) == wanted }.map(UInt32.init) ?? actual
+    }
+}
+
 /// Reads the user's current keyboard layout and works out which keys produce which characters.
 final class KeyboardLayout {
-    /// Every key that types a character, in physical order (ISO MacBook keyboard).
-    static let typingKeys: [UInt16] = [
-        0x0A, 0x12, 0x13, 0x14, 0x15, 0x17, 0x16, 0x1A, 0x1C, 0x19, 0x1D, 0x1B, 0x18,
-        0x0C, 0x0D, 0x0E, 0x0F, 0x11, 0x10, 0x20, 0x22, 0x1F, 0x23, 0x21, 0x1E,
-        0x00, 0x01, 0x02, 0x03, 0x05, 0x04, 0x26, 0x28, 0x25, 0x29, 0x27, 0x2A,
-        0x32, 0x06, 0x07, 0x08, 0x09, 0x0B, 0x2D, 0x2E, 0x2B, 0x2F, 0x2C,
-        0x31,
-    ]
     static let layers: [Mods] = [[], [.shift], [.option], [.shift, .option]]
 
     let name: String
+    let physical: PhysicalLayout
+    /// Every key that types a character, in physical order.
+    let typingKeys: [UInt16]
+    private let kbdType: UInt32
     private let data: Data?
     private var outputs: [Stroke: KeyOutput] = [:]
     /// Cheapest way to type each character.
@@ -98,6 +128,9 @@ final class KeyboardLayout {
     private var baseKeys: [String: UInt16] = [:]
 
     init() {
+        physical = .current
+        kbdType = physical.kbdType
+        typingKeys = MacBookKeyboard.typingKeys(physical)
         var source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue()
         if source.flatMap({ TISGetInputSourceProperty($0, kTISPropertyUnicodeKeyLayoutData) }) == nil {
             source = TISCopyCurrentASCIICapableKeyboardLayoutInputSource()?.takeRetainedValue()
@@ -151,7 +184,7 @@ final class KeyboardLayout {
             var length = 0
             let status = UCKeyTranslate(
                 layout, keyCode, UInt16(kUCKeyActionDown), (mods.carbon >> 8) & 0xFF,
-                UInt32(LMGetKbdType()), noDeadKeys ? OptionBits(kUCKeyTranslateNoDeadKeysMask) : 0,
+                kbdType, noDeadKeys ? OptionBits(kUCKeyTranslateNoDeadKeysMask) : 0,
                 &deadState, chars.count, &length, &chars)
             guard status == noErr else { return "" }
             return String(utf16CodeUnits: chars, count: length)
@@ -160,7 +193,7 @@ final class KeyboardLayout {
 
     private func build() {
         for layer in Self.layers {
-            for code in Self.typingKeys {
+            for code in typingKeys {
                 let stroke = Stroke(keyCode: code, mods: layer)
                 var state: UInt32 = 0
                 let text = translate(code, layer, &state)
@@ -170,7 +203,7 @@ final class KeyboardLayout {
                     // Dead key: try every follow-up key to find what it composes.
                     for followLayer in [Mods(), .shift] {
                         // Space first, so "dead key + space" wins ties (the usual way to type ~ ^ ´).
-                        for follow in [0x31] + Self.typingKeys.filter({ $0 != 0x31 }) {
+                        for follow in [0x31] + typingKeys.filter({ $0 != 0x31 }) {
                             var s = state
                             // Don't check `s` afterwards: macOS leaves leftover bits in it after composing.
                             let composed = translate(follow, followLayer, &s)

@@ -34,6 +34,9 @@ final class SettingsModel: ObservableObject {
     @Published private(set) var recording = false
     @Published var error: String?
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @Published var physicalLayout = PhysicalLayout.preference {
+        didSet { PhysicalLayout.preference = physicalLayout }
+    }
 
     let tapDetector = ModifierTapDetector()
     var onShowHelper: (() -> Void)?
@@ -160,6 +163,16 @@ struct SettingsView: View {
                 Text(error).font(.caption).foregroundColor(.red).fixedSize(horizontal: false, vertical: true)
             }
             Divider()
+            HStack {
+                Text("Tangentbord")
+                Spacer()
+                Picker("", selection: $model.physicalLayout) {
+                    Text("Automatiskt (\(PhysicalLayout.detected.label))").tag(PhysicalLayout?.none)
+                    ForEach(PhysicalLayout.allCases, id: \.self) { Text($0.label).tag(PhysicalLayout?.some($0)) }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
             Toggle("Starta Tangent vid inloggning", isOn: Binding(
                 get: { model.launchAtLogin },
                 set: { model.setLaunchAtLogin($0) }))

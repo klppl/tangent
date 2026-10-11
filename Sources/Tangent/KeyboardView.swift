@@ -17,26 +17,56 @@ struct KeyDef {
     let kind: Kind
 
     static func c(_ code: UInt16) -> KeyDef { KeyDef(code: code, width: 1, kind: .char) }
+    static func c(_ code: UInt16, _ width: CGFloat) -> KeyDef { KeyDef(code: code, width: width, kind: .char) }
     static func l(_ code: UInt16?, _ label: String, _ width: CGFloat) -> KeyDef { KeyDef(code: code, width: width, kind: .label(label)) }
     static func m(_ code: UInt16, _ mod: Mods, _ width: CGFloat, primary: Bool = true) -> KeyDef {
         KeyDef(code: code, width: width, kind: .mod(mod, primary: primary))
     }
 }
 
-/// ISO MacBook keyboard (Swedish physical layout: § left of 1, < left of Z).
+/// MacBook keyboard in ISO or ANSI shape. Every row is 15 units wide.
 enum MacBookKeyboard {
-    static let rows: [[KeyDef]] = [
-        [0x0A, 0x12, 0x13, 0x14, 0x15, 0x17, 0x16, 0x1A, 0x1C, 0x19, 0x1D, 0x1B, 0x18].map(KeyDef.c) + [.l(0x33, "⌫", 2)],
-        [.l(0x30, "⇥", 1.5)] + [0x0C, 0x0D, 0x0E, 0x0F, 0x11, 0x10, 0x20, 0x22, 0x1F, 0x23, 0x21, 0x1E].map(KeyDef.c)
-            + [KeyDef(code: 0x24, width: 1.5, kind: .isoReturn)],
-        [.l(0x39, "⇪", 1.75)] + [0x00, 0x01, 0x02, 0x03, 0x05, 0x04, 0x26, 0x28, 0x25, 0x29, 0x27, 0x2A].map(KeyDef.c)
-            + [KeyDef(code: 0x24, width: 1.25, kind: .returnTail)],
-        [.m(0x38, .shift, 1.25)] + [0x32, 0x06, 0x07, 0x08, 0x09, 0x0B, 0x2D, 0x2E, 0x2B, 0x2F, 0x2C].map(KeyDef.c)
-            + [.m(0x3C, .shift, 2.75, primary: false)],
-        [.m(0x3F, .fn, 1), .m(0x3B, .control, 1), .m(0x3A, .option, 1), .m(0x37, .command, 1.25), .l(0x31, "", 5.5),
-         .m(0x36, .command, 1.25, primary: false), .m(0x3D, .option, 1, primary: false),
-         KeyDef(code: nil, width: 3, kind: .arrows)],
+    private static let numbers: [UInt16] = [0x12, 0x13, 0x14, 0x15, 0x17, 0x16, 0x1A, 0x1C, 0x19, 0x1D, 0x1B, 0x18]
+    private static let top: [UInt16] = [0x0C, 0x0D, 0x0E, 0x0F, 0x11, 0x10, 0x20, 0x22, 0x1F, 0x23, 0x21, 0x1E]
+    private static let home: [UInt16] = [0x00, 0x01, 0x02, 0x03, 0x05, 0x04, 0x26, 0x28, 0x25, 0x29, 0x27]
+    private static let bottom: [UInt16] = [0x06, 0x07, 0x08, 0x09, 0x0B, 0x2D, 0x2E, 0x2B, 0x2F, 0x2C]
+    private static let spaceRow: [KeyDef] = [
+        .m(0x3F, .fn, 1), .m(0x3B, .control, 1), .m(0x3A, .option, 1), .m(0x37, .command, 1.25), .l(0x31, "", 5.5),
+        .m(0x36, .command, 1.25, primary: false), .m(0x3D, .option, 1, primary: false),
+        KeyDef(code: nil, width: 3, kind: .arrows),
     ]
+
+    /// ISO: § left of 1, tall return, extra key (< on Swedish) between left shift and Z.
+    static let iso: [[KeyDef]] = [
+        ([0x0A] + numbers).map(KeyDef.c) + [.l(0x33, "⌫", 2)],
+        [.l(0x30, "⇥", 1.5)] + top.map(KeyDef.c) + [KeyDef(code: 0x24, width: 1.5, kind: .isoReturn)],
+        [.l(0x39, "⇪", 1.75)] + (home + [0x2A]).map(KeyDef.c) + [KeyDef(code: 0x24, width: 1.25, kind: .returnTail)],
+        [.m(0x38, .shift, 1.25)] + ([0x32] + bottom).map(KeyDef.c) + [.m(0x3C, .shift, 2.75, primary: false)],
+        spaceRow,
+    ]
+
+    /// ANSI: ` left of 1, \ above a wide return, long left shift.
+    static let ansi: [[KeyDef]] = [
+        ([0x32] + numbers).map(KeyDef.c) + [.l(0x33, "⌫", 2)],
+        [.l(0x30, "⇥", 1.5)] + top.map(KeyDef.c) + [.c(0x2A, 1.5)],
+        [.l(0x39, "⇪", 1.75)] + home.map(KeyDef.c) + [.l(0x24, "↩", 2.25)],
+        [.m(0x38, .shift, 2.25)] + bottom.map(KeyDef.c) + [.m(0x3C, .shift, 2.75, primary: false)],
+        spaceRow,
+    ]
+
+    static func rows(_ physical: PhysicalLayout) -> [[KeyDef]] {
+        physical == .ansi ? ansi : iso
+    }
+
+    /// Keys that type characters, in physical order, ending with space.
+    static func typingKeys(_ physical: PhysicalLayout) -> [UInt16] {
+        rows(physical).flatMap { row in
+            row.compactMap { key -> UInt16? in
+                if case .char = key.kind { return key.code }
+                return nil
+            }
+        } + [0x31]
+    }
 }
 
 enum StepColor {
@@ -50,11 +80,12 @@ struct KeyboardView: View {
     var gap: CGFloat = 6
 
     var body: some View {
+        let rows = MacBookKeyboard.rows(model.layout.physical)
         VStack(alignment: .leading, spacing: gap) {
-            ForEach(MacBookKeyboard.rows.indices, id: \.self) { r in
+            ForEach(rows.indices, id: \.self) { r in
                 HStack(spacing: gap) {
-                    ForEach(MacBookKeyboard.rows[r].indices, id: \.self) { i in
-                        key(MacBookKeyboard.rows[r][i])
+                    ForEach(rows[r].indices, id: \.self) { i in
+                        key(rows[r][i])
                     }
                 }
                 .zIndex(r == 1 ? 1 : 0) // let the tall return key overlap the row below

@@ -91,7 +91,7 @@ struct KeyboardView: View {
                 .onTapGesture { model.tapKey(code) }
 
         case let .mod(mod, primary):
-            let step = stepIndex(code: nil, mod: mod, primary: primary)
+            let step = stepIndex(code: def.code, mod: mod, primary: primary)
             let pressed = model.heldMods.contains(mod) || (model.heldMods.isEmpty && model.manualLayer.contains(mod) && !focusing)
             KeyCap(label: mod.symbol, width: w, height: unit, step: step, pressed: pressed,
                    dimmed: focusing && step == nil, quiet: true, fontSize: mod == .fn ? 11 : 14)

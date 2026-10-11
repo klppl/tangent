@@ -19,7 +19,7 @@ struct Entry: Identifiable, Equatable {
 final class HelperModel: ObservableObject {
     enum Tab: String, CaseIterable { case popular = "Populära", characters = "Alla tecken", shortcuts = "Kortkommandon" }
 
-    static let popular = ["@", "{", "}", "[", "]", "\\", "|", "~", "$", "€", "<", ">", "^"]
+    static let popular = ["@", "{", "}", "[", "]", "\\", "|", "~", "$", "€", "^", "`", "°"]
 
     @Published private(set) var layout = KeyboardLayout()
     @Published var tab: Tab = .popular
@@ -49,15 +49,23 @@ final class HelperModel: ObservableObject {
                   category: def.category, steps: layout.recipes[def.char] ?? [])
         }
         shortcutEntries = Catalog.shortcuts.map { def in
-            let code: UInt16?
+            let resolve: (KeySpec) -> UInt16? = { spec in
+                switch spec {
+                case .code(let c): return c
+                case .char(let c): return self.layout.keyCode(forBase: c)
+                }
+            }
             var fallback: String?
-            switch def.key {
-            case .code(let c): code = c
-            case .char(let c): code = layout.keyCode(forBase: c); fallback = c.uppercased()
+            if case .char(let c) = def.key { fallback = c.uppercased() }
+            var steps: [Stroke] = []
+            if let code = resolve(def.key) {
+                steps = [Stroke(keyCode: code, mods: def.mods)]
+                if let then = def.then, let next = resolve(then.key) {
+                    steps.append(Stroke(keyCode: next, mods: then.mods))
+                }
             }
             return Entry(id: "s:" + def.title, glyph: nil, title: def.title, aliases: def.aliases,
-                         category: def.category, steps: code.map { [Stroke(keyCode: $0, mods: def.mods)] } ?? [],
-                         fallbackKey: fallback)
+                         category: def.category, steps: steps, fallbackKey: fallback)
         }
     }
 

@@ -20,6 +20,8 @@ struct ShortcutDef {
     let mods: Mods
     let key: KeySpec
     var aliases: [String] = []
+    /// Optional second step, e.g. ⇧⌘4 then space.
+    var then: (mods: Mods, key: KeySpec)? = nil
 }
 
 enum Catalog {
@@ -40,8 +42,6 @@ enum Catalog {
         s("]", "Programmering", "höger hakparentes", "hakparentes", "square bracket", "box bracket"),
         s("{", "Programmering", "vänster måsvinge", "måsvinge", "krullparentes", "curly brace", "curly bracket"),
         s("}", "Programmering", "höger måsvinge", "måsvinge", "krullparentes", "curly brace", "curly bracket"),
-        s("<", "Programmering", "mindre än", "krokodilmun", "angle bracket", "chevron", "less than"),
-        s(">", "Programmering", "större än", "krokodilmun", "angle bracket", "chevron", "greater than"),
         s("/", "Programmering", "snedstreck", "slash"),
         s("\\", "Programmering", "bakåtsnedstreck", "backslash"),
         s("|", "Programmering", "lodstreck", "pipe", "vertical bar"),
@@ -109,6 +109,9 @@ enum Catalog {
         s("»", "Typografi", "gåsögon", "vinkelcitat", "guillemet"),
         s("”", "Typografi", "svenskt citattecken", "typografiskt citattecken", "smart quote"),
         s("’", "Typografi", "typografisk apostrof", "smart apostrophe"),
+        s("“", "Typografi", "engelskt citattecken", "curly quote", "smart quote"),
+        s("‘", "Typografi", "engelskt enkelcitat", "curly single quote"),
+        s("\u{F8FF}", "Typografi", "äpple", "apple-logga", "äppellogga", "apple logo"),
         s("•", "Typografi", "punkt", "bullet", "punktlista"),
         s("§", "Typografi", "paragraf", "paragraftecken", "section sign"),
         s("¶", "Typografi", "stycketecken", "pilcrow"),
@@ -125,13 +128,18 @@ enum Catalog {
         .init(title: "Skärmdump av hela skärmen", category: "Skärmdumpar", mods: [.shift, .command], key: .char("3"), aliases: ["screenshot", "printscreen"]),
         .init(title: "Skärmdump av markerat område", category: "Skärmdumpar", mods: [.shift, .command], key: .char("4"), aliases: ["screenshot", "klippverktyg", "snipping tool"]),
         .init(title: "Skärmdumpverktyg & skärminspelning", category: "Skärmdumpar", mods: [.shift, .command], key: .char("5"), aliases: ["screenshot", "spela in skärmen", "screen recording"]),
+        .init(title: "Skärmdump av ett fönster", category: "Skärmdumpar", mods: [.shift, .command], key: .char("4"), aliases: ["screenshot", "fönster", "window"], then: ([], .code(0x31))),
         .init(title: "Skärmdump av område till urklipp", category: "Skärmdumpar", mods: [.control, .shift, .command], key: .char("4"), aliases: ["screenshot", "kopiera"]),
 
         // System
         .init(title: "Tvångsavsluta program", category: "System", mods: [.option, .command], key: .code(0x35), aliases: ["force quit", "ctrl alt delete", "aktivitetshanteraren", "task manager", "hängt sig"]),
         .init(title: "Lås skärmen", category: "System", mods: [.control, .command], key: .char("q"), aliases: ["lock screen", "windows l"]),
         .init(title: "Spotlight-sökning", category: "System", mods: [.command], key: .code(0x31), aliases: ["sök", "search"]),
-        .init(title: "Emoji och symboler", category: "System", mods: [.control, .command], key: .code(0x31), aliases: ["emoji", "smiley", "tecken"]),
+        .init(title: "Emoji och symboler", category: "System", mods: [.control, .command], key: .code(0x31), aliases: ["emoji", "smiley", "tecken", "globe"]),
+        .init(title: "Emoji (fn/🌐-tangenten)", category: "System", mods: [.fn], key: .char("e"), aliases: ["emoji", "smiley", "globe"]),
+        .init(title: "Diktering (tala in text)", category: "System", mods: [], key: .code(0x3F), aliases: ["dictation", "röst", "prata"], then: ([], .code(0x3F))),
+        .init(title: "Byt tangentbordsspråk", category: "System", mods: [.control], key: .code(0x31), aliases: ["input source", "layout", "språk", "engelskt tangentbord"]),
+        .init(title: "Logga ut", category: "System", mods: [.shift, .command], key: .char("q"), aliases: ["log out"]),
         .init(title: "Växla mellan program", category: "System", mods: [.command], key: .code(0x30), aliases: ["alt tab", "byt program", "app switcher"]),
         .init(title: "Växla mellan fönster i programmet", category: "System", mods: [.command], key: .code(0x32), aliases: ["byt fönster"]),
         .init(title: "Mission Control", category: "System", mods: [.control], key: .code(0x7E), aliases: ["alla fönster", "skrivbord"]),
@@ -140,12 +148,16 @@ enum Catalog {
         // Fönster & program
         .init(title: "Avsluta program", category: "Fönster & program", mods: [.command], key: .char("q"), aliases: ["quit", "stäng program", "alt f4"]),
         .init(title: "Stäng fönster / flik", category: "Fönster & program", mods: [.command], key: .char("w"), aliases: ["close"]),
+        .init(title: "Stäng alla fönster", category: "Fönster & program", mods: [.option, .command], key: .char("w"), aliases: ["close all"]),
         .init(title: "Minimera fönster", category: "Fönster & program", mods: [.command], key: .char("m"), aliases: ["minimize"]),
         .init(title: "Göm program", category: "Fönster & program", mods: [.command], key: .char("h"), aliases: ["hide", "dölj"]),
         .init(title: "Göm alla andra program", category: "Fönster & program", mods: [.option, .command], key: .char("h"), aliases: ["hide others"]),
         .init(title: "Helskärm", category: "Fönster & program", mods: [.control, .command], key: .char("f"), aliases: ["fullscreen", "fullskärm"]),
         .init(title: "Inställningar", category: "Fönster & program", mods: [.command], key: .char(","), aliases: ["settings", "preferences"]),
         .init(title: "Ny flik", category: "Fönster & program", mods: [.command], key: .char("t"), aliases: ["new tab"]),
+        .init(title: "Nästa flik", category: "Fönster & program", mods: [.control], key: .code(0x30), aliases: ["next tab", "byt flik"]),
+        .init(title: "Föregående flik", category: "Fönster & program", mods: [.control, .shift], key: .code(0x30), aliases: ["previous tab", "byt flik"]),
+        .init(title: "Gå till adressfältet", category: "Fönster & program", mods: [.command], key: .char("l"), aliases: ["address bar", "url", "webbadress"]),
         .init(title: "Öppna stängd flik igen", category: "Fönster & program", mods: [.shift, .command], key: .char("t"), aliases: ["reopen tab", "ångra stängd flik"]),
         .init(title: "Ladda om sidan", category: "Fönster & program", mods: [.command], key: .char("r"), aliases: ["refresh", "uppdatera", "f5"]),
         .init(title: "Zooma in", category: "Fönster & program", mods: [.command], key: .char("+"), aliases: ["förstora", "zoom"]),
@@ -161,16 +173,21 @@ enum Catalog {
         .init(title: "Gör om", category: "Redigera text", mods: [.shift, .command], key: .char("z"), aliases: ["redo", "ctrl y"]),
         .init(title: "Markera allt", category: "Redigera text", mods: [.command], key: .char("a"), aliases: ["select all"]),
         .init(title: "Sök", category: "Redigera text", mods: [.command], key: .char("f"), aliases: ["find", "hitta"]),
+        .init(title: "Hitta nästa", category: "Redigera text", mods: [.command], key: .char("g"), aliases: ["find next", "sök igen"]),
         .init(title: "Spara", category: "Redigera text", mods: [.command], key: .char("s"), aliases: ["save"]),
         .init(title: "Skriv ut", category: "Redigera text", mods: [.command], key: .char("p"), aliases: ["print"]),
 
         // Flytta i text
         .init(title: "Radera framåt (Delete)", category: "Flytta i text", mods: [.fn], key: .code(0x33), aliases: ["delete", "del"]),
         .init(title: "Radera helt ord", category: "Flytta i text", mods: [.option], key: .code(0x33), aliases: ["ctrl backspace"]),
+        .init(title: "Radera hela raden bakåt", category: "Flytta i text", mods: [.command], key: .code(0x33), aliases: ["delete line"]),
+        .init(title: "Markera ett ord i taget", category: "Flytta i text", mods: [.option, .shift], key: .code(0x7C), aliases: ["select word", "ctrl shift pil"]),
         .init(title: "Hoppa ett ord bakåt", category: "Flytta i text", mods: [.option], key: .code(0x7B), aliases: ["ctrl vänsterpil"]),
         .init(title: "Hoppa ett ord framåt", category: "Flytta i text", mods: [.option], key: .code(0x7C), aliases: ["ctrl högerpil"]),
-        .init(title: "Början av raden (Home)", category: "Flytta i text", mods: [.command], key: .code(0x7B), aliases: ["home"]),
-        .init(title: "Slutet av raden (End)", category: "Flytta i text", mods: [.command], key: .code(0x7C), aliases: ["end"]),
+        .init(title: "Början av raden", category: "Flytta i text", mods: [.command], key: .code(0x7B), aliases: ["home", "radstart"]),
+        .init(title: "Slutet av raden", category: "Flytta i text", mods: [.command], key: .code(0x7C), aliases: ["end", "radslut"]),
+        .init(title: "Home (överst på sidan)", category: "Flytta i text", mods: [.fn], key: .code(0x7B), aliases: ["home", "toppen"]),
+        .init(title: "End (längst ner på sidan)", category: "Flytta i text", mods: [.fn], key: .code(0x7C), aliases: ["end", "botten"]),
         .init(title: "Början av dokumentet", category: "Flytta i text", mods: [.command], key: .code(0x7E), aliases: ["ctrl home"]),
         .init(title: "Slutet av dokumentet", category: "Flytta i text", mods: [.command], key: .code(0x7D), aliases: ["ctrl end"]),
         .init(title: "Page Up", category: "Flytta i text", mods: [.fn], key: .code(0x7E), aliases: ["sida upp"]),
@@ -183,6 +200,8 @@ enum Catalog {
         .init(title: "Snabbtitt", category: "Finder", mods: [], key: .code(0x31), aliases: ["quick look", "förhandsvisa"]),
         .init(title: "Byt namn", category: "Finder", mods: [], key: .code(0x24), aliases: ["rename", "f2"]),
         .init(title: "Flytta fil (efter ⌘C)", category: "Finder", mods: [.option, .command], key: .char("v"), aliases: ["klipp ut fil", "cut file", "move"]),
+        .init(title: "Duplicera", category: "Finder", mods: [.command], key: .char("d"), aliases: ["duplicate", "kopia"]),
+        .init(title: "Sök bland filer", category: "Finder", mods: [.option, .command], key: .code(0x31), aliases: ["finder search", "hitta fil"]),
         .init(title: "Gå till mapp", category: "Finder", mods: [.shift, .command], key: .char("g"), aliases: ["go to folder", "sökväg"]),
         .init(title: "Ny mapp", category: "Finder", mods: [.shift, .command], key: .char("n"), aliases: ["new folder"]),
         .init(title: "Visa info", category: "Finder", mods: [.command], key: .char("i"), aliases: ["egenskaper", "properties", "get info"]),

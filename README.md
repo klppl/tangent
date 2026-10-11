@@ -21,11 +21,13 @@ Tangent is a menu bar app. **Double-tap ⌘** anywhere and a virtual keyboard sh
 
 - **Always correct:** reads your active keyboard layout, including dead keys like `⌥¨` then space → `~`.
 - **Fast:** type, press ↩, and the character is copied. esc closes.
-- **Light:** a native Swift app with no Dock icon and no permissions needed.
+- **Light:** a native Swift app with no Dock icon. No permissions needed, unless you want the current app's shortcuts (see below).
 
 ## Cheat sheets
 
-Press **⇥** in the helper to switch to cheat sheet mode. Your own sheets live in `~/.config/tangent` as `.md` or `.txt` files, and the search field searches all of them:
+Press **⇥** in the helper to switch to cheat sheet mode. The first sheet lists every menu shortcut in the app you were using. Reading another app's menus needs Accessibility permission, which Tangent asks for the first time you open that sheet.
+
+Your own sheets live in `~/.config/tangent` as `.md` or `.txt` files, and the search field searches all of them:
 
 ```markdown
 # Vim

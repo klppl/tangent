@@ -33,6 +33,11 @@ final class HelperModel: ObservableObject {
     @Published var mode: Mode = .keyboard
     @Published private(set) var sheets: [CheatSheet] = []
     @Published var sheetID: String?
+    /// The app that was in front when the helper opened, whose menu shortcuts form a sheet of their own.
+    @Published private(set) var appName: String?
+    @Published private(set) var appSheet: CheatSheet?
+    @Published private(set) var appAccess = AppMenu.hasAccess
+    private var appRead = 0
 
     private(set) var symbolEntries: [Entry] = []
     private(set) var shortcutEntries: [Entry] = []
@@ -40,9 +45,10 @@ final class HelperModel: ObservableObject {
 
     init() { rebuild() }
 
-    /// Re-reads the keyboard layout (the user may have switched input source).
-    func reload() {
+    /// Re-reads the keyboard layout (the user may have switched input source), cheat sheets and the front app's menus.
+    func reload(frontApp: NSRunningApplication? = nil) {
         sheets = CheatSheets.load()
+        readMenus(of: frontApp)
         layout = KeyboardLayout()
         rebuild()
         if let id = selected?.id { selected = (symbolEntries + shortcutEntries).first { $0.id == id } }
@@ -111,17 +117,48 @@ final class HelperModel: ObservableObject {
         mode = mode == .keyboard ? .cheatSheets : .keyboard
     }
 
-    /// The sheet shown when not searching.
-    var currentSheet: CheatSheet? { sheets.first { $0.id == sheetID } ?? sheets.first }
+    static let appSheetID = "app"
+
+    /// Sidebar order: the front app first, then the user's sheets.
+    var sheetIDs: [String] { (appName != nil ? [Self.appSheetID] : []) + sheets.map(\.id) }
+
+    /// The sheet shown when not searching. Falls back to the first one if the chosen sheet is gone.
+    var currentSheetID: String? { sheetID.flatMap { sheetIDs.contains($0) ? $0 : nil } ?? sheetIDs.first }
+
+    var currentSheet: CheatSheet? {
+        currentSheetID == Self.appSheetID ? appSheet : sheets.first { $0.id == currentSheetID }
+    }
 
     /// The current sheet, or search hits across all sheets.
     var sheetResults: [CheatSheet] {
-        isSearching ? CheatSheets.search(sheets, query) : currentSheet.map { [$0] } ?? []
+        isSearching ? CheatSheets.search((appSheet.map { [$0] } ?? []) + sheets, query) : currentSheet.map { [$0] } ?? []
     }
 
-    func showSheet(_ sheet: CheatSheet) {
-        sheetID = sheet.id
+    func showSheet(id: String) {
+        sheetID = id
         query = ""
+    }
+
+    func requestAppAccess() {
+        AppMenu.requestAccess()
+    }
+
+    private func readMenus(of app: NSRunningApplication?) {
+        appAccess = AppMenu.hasAccess
+        appName = app?.localizedName
+        appSheet = nil
+        appRead += 1
+        guard appAccess, let app, let name = appName else { return }
+        let read = appRead
+        let pid = app.processIdentifier
+        let id = Self.appSheetID
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let sheet = AppMenu.sheet(pid: pid, title: name, id: id)
+            DispatchQueue.main.async {
+                guard let self, self.appRead == read else { return }
+                self.appSheet = sheet
+            }
+        }
     }
 
     func createExampleSheet() {
@@ -140,9 +177,10 @@ final class HelperModel: ObservableObject {
     /// ↑/↓ through the grid, or through the sheets in cheat sheet mode.
     func move(_ delta: Int) {
         if mode == .cheatSheets {
-            guard !isSearching, !sheets.isEmpty else { return }
-            let index = currentSheet.flatMap { s in sheets.firstIndex(of: s) } ?? 0
-            sheetID = sheets[min(max(index + delta, 0), sheets.count - 1)].id
+            let ids = sheetIDs
+            guard !isSearching, !ids.isEmpty else { return }
+            let index = currentSheetID.flatMap { ids.firstIndex(of: $0) } ?? 0
+            sheetID = ids[min(max(index + delta, 0), ids.count - 1)]
             return
         }
         let list = results

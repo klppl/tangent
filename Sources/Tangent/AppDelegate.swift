@@ -32,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        let layout = KeyboardLayout()
+        let layout = KeyboardLayout(followSettings: false)
 
         let show = NSMenuItem(title: "Visa teckenhjälp", action: #selector(showHelper), keyEquivalent: "")
         show.target = self

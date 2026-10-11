@@ -93,7 +93,8 @@ struct HelperView: View {
                         .lineLimit(1)
                 }
             } else {
-                Text("Håll in ⌥ eller ⇧ för att utforska")
+                Text(model.layout.isOverride ? "Visar \(model.layout.name) · håll in ⌥ eller ⇧ för att utforska"
+                                             : "Håll in ⌥ eller ⇧ för att utforska")
                     .font(.system(size: 13))
                     .foregroundStyle(.tertiary)
             }

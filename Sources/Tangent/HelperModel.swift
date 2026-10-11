@@ -137,8 +137,11 @@ final class HelperModel: ObservableObject {
     /// Sidebar order: the front app first, then the user's sheets.
     var sheetIDs: [String] { (appName != nil ? [Self.appSheetID] : []) + sheets.map(\.id) }
 
-    /// The sheet shown when not searching. Falls back to the first one if the chosen sheet is gone.
-    var currentSheetID: String? { sheetID.flatMap { sheetIDs.contains($0) ? $0 : nil } ?? sheetIDs.first }
+    /// The sheet shown when not searching. Falls back to the first one if the chosen sheet is gone,
+    /// skipping the front app's sheet while it would only ask for permission.
+    var currentSheetID: String? {
+        sheetID.flatMap { sheetIDs.contains($0) ? $0 : nil } ?? (appAccess ? nil : sheets.first?.id) ?? sheetIDs.first
+    }
 
     var currentSheet: CheatSheet? {
         currentSheetID == Self.appSheetID ? appSheet : sheets.first { $0.id == currentSheetID }

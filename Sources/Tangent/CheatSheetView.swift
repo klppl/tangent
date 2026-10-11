@@ -91,7 +91,7 @@ struct CheatSheetView: View {
                                         .padding(.bottom, 4)
                                 }
                                 ForEach(section.rows) { row in
-                                    SheetRow(row: row) { model.copy(row) }
+                                    SheetRow(row: row, onShow: { model.showOnKeyboard(row) }, onCopy: { model.copy(row) })
                                 }
                             }
                         }
@@ -200,6 +200,7 @@ private struct SheetButton: View {
 
 private struct SheetRow: View {
     let row: CheatSheet.Row
+    let onShow: () -> Void
     let onCopy: () -> Void
     @State private var hovered = false
 
@@ -233,6 +234,7 @@ private struct SheetRow: View {
         .contentShape(Rectangle())
         .onHover { hovered = $0 }
         .onTapGesture(count: 2, perform: onCopy)
-        .help("Dubbelklicka för att kopiera")
+        .onTapGesture(perform: onShow)
+        .help("Klicka för att visa på tangentbordet, dubbelklicka för att kopiera")
     }
 }

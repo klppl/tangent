@@ -1,5 +1,7 @@
 # Tangent
 
+[![License: Lagom](https://img.shields.io/badge/license-lagom-9E2B25)](https://klppl.github.io/lagom-license/)
+
 **Never hunt for `@`, `{`, `\` or `~` on a Mac keyboard again.**
 
 Tangent is a menu bar app. **Double-tap ⌘** anywhere and a virtual keyboard shows exactly which keys to press for any character or shortcut. Double-tap and hold to peek: it disappears when you let go.
